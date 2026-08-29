@@ -1428,6 +1428,282 @@
     }
 
 
+  
+
+    /* =========================
+       COLLAPSIBLE CONTROL PANEL
+       + IMPORT DRAWER
+    ========================= */
+
+    #controlPanel {
+      transition:
+        padding .22s ease,
+        box-shadow .22s ease,
+        background .22s ease;
+    }
+
+    #controlPanelHandle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 42px;
+    }
+
+    .control-panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+      color: #eef4ff;
+    }
+
+    #currentViewLabel {
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #dce8f8;
+      background:
+        linear-gradient(135deg,
+          color-mix(in srgb, var(--theme-left) 18%, rgba(24,29,40,.94)),
+          color-mix(in srgb, var(--theme-right) 14%, rgba(24,29,40,.94))
+        );
+      border: 1px solid color-mix(in srgb, var(--neon) 32%, rgba(255,255,255,.08));
+      box-shadow: inset 0 0 12px color-mix(in srgb, var(--neon) 7%, transparent);
+    }
+
+    #collapseControlsButton {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      color: #eaf2ff;
+      background: rgba(29,34,45,.84);
+      border: 1px solid color-mix(in srgb, var(--neon) 36%, rgba(255,255,255,.08));
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: inset 0 0 14px color-mix(in srgb, var(--neon) 7%, transparent);
+    }
+
+    #collapseControlsButton svg {
+      width: 20px;
+      height: 20px;
+      transition: transform .22s ease;
+    }
+
+    #controlPanelBody {
+      max-height: 430px;
+      overflow: hidden;
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        max-height .26s ease,
+        opacity .18s ease,
+        transform .22s ease,
+        margin-top .22s ease;
+    }
+
+    #controlPanel.expanded #controlPanelBody {
+      margin-top: 8px;
+    }
+
+    #controlPanel.collapsed {
+      padding-bottom: 8px;
+    }
+
+    #controlPanel.collapsed #controlPanelBody {
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-8px);
+      margin-top: 0;
+      pointer-events: none;
+    }
+
+    #controlPanel.expanded #collapseControlsButton svg {
+      transform: rotate(180deg);
+    }
+
+    #importDrawerBackdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 68;
+      opacity: 0;
+      pointer-events: none;
+      background: rgba(0,0,0,.48);
+      backdrop-filter: blur(3px);
+      transition: opacity .22s ease;
+    }
+
+    #importDrawerBackdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #importDrawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 72;
+      width: min(86vw, 350px);
+      padding:
+        calc(env(safe-area-inset-top) + 18px)
+        18px
+        calc(env(safe-area-inset-bottom) + 22px);
+      overflow-y: auto;
+      transform: translateX(calc(-100% - 30px));
+      transition: transform .28s cubic-bezier(.2,.72,.2,1);
+      background:
+        radial-gradient(circle at 0% 24%, color-mix(in srgb, var(--theme-left) 25%, transparent), transparent 42%),
+        radial-gradient(circle at 100% 62%, color-mix(in srgb, var(--theme-right) 15%, transparent), transparent 48%),
+        linear-gradient(145deg, rgba(12,16,24,.985), rgba(7,9,14,.99));
+      border-right: 2px solid color-mix(in srgb, var(--neon) 68%, transparent);
+      box-shadow:
+        18px 0 45px rgba(0,0,0,.62),
+        8px 0 30px color-mix(in srgb, var(--neon) 20%, transparent);
+    }
+
+    #importDrawer.open {
+      transform: translateX(0);
+    }
+
+    #importDrawerHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    #importDrawerHeader h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: .02em;
+    }
+
+    #closeImportDrawerButton {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      color: white;
+      background: rgba(32,37,49,.9);
+      border: 1px solid color-mix(in srgb, var(--neon) 32%, rgba(255,255,255,.08));
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .import-drawer-copy {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .import-drawer-card {
+      padding: 15px;
+      border-radius: 16px;
+      background:
+        linear-gradient(135deg,
+          color-mix(in srgb, var(--theme-left) 10%, rgba(24,29,40,.94)),
+          color-mix(in srgb, var(--theme-right) 8%, rgba(20,24,34,.96))
+        );
+      border: 1px solid color-mix(in srgb, var(--neon) 32%, rgba(255,255,255,.08));
+      box-shadow:
+        inset 0 0 20px color-mix(in srgb, var(--neon) 7%, transparent),
+        0 10px 24px rgba(0,0,0,.2);
+    }
+
+    .import-drawer-card label {
+      display: block;
+      margin-bottom: 9px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #eaf1fb;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    #importDrawer #fileInput {
+      display: block !important;
+      width: 100%;
+      margin: 0;
+      padding: 12px;
+      color: #dce8f8;
+      background: rgba(20,24,33,.94);
+      border: 1px solid color-mix(in srgb, var(--neon) 30%, rgba(255,255,255,.08));
+      border-radius: 13px;
+    }
+
+    .import-note {
+      margin-top: 10px;
+      color: #9da8ba;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    #importDrawerTab {
+      position: fixed;
+      left: 0;
+      top: 46%;
+      z-index: 67;
+      min-width: 42px;
+      padding: 13px 8px 12px;
+      color: #f1f7ff;
+      background:
+        linear-gradient(180deg,
+          color-mix(in srgb, var(--theme-left) 34%, rgba(15,20,30,.96)),
+          color-mix(in srgb, var(--neon) 16%, rgba(12,16,25,.98))
+        );
+      border: 1px solid color-mix(in srgb, var(--neon) 62%, transparent);
+      border-left: 0;
+      border-radius: 0 12px 12px 0;
+      writing-mode: vertical-rl;
+      transform: translateY(-50%) rotate(180deg);
+      letter-spacing: .15em;
+      font-size: 10px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow:
+        7px 0 20px color-mix(in srgb, var(--neon) 20%, transparent),
+        inset 0 0 14px color-mix(in srgb, var(--neon) 10%, transparent);
+    }
+
+    #importDrawer.open + #importDrawerTab {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 520px) {
+      #controlPanelHandle {
+        min-height: 38px;
+      }
+
+      .control-panel-title {
+        font-size: 11px;
+      }
+
+      #currentViewLabel {
+        max-width: 112px;
+      }
+
+      #importDrawerTab {
+        top: 52%;
+      }
+    }
+
   </style>
 </head>
 
@@ -1481,76 +1757,120 @@
   </section>
 
 
-  <header>
+  <header id="controlPanel" class="expanded">
 
-    <input
-      id="fileInput"
-      type="file"
-      accept=".mp3,audio/mpeg"
-      multiple
-    >
+    <div id="controlPanelHandle">
 
-    <input
-      id="search"
-      type="text"
-      placeholder="Search title, artist, or album..."
-    >
-
-    <div id="tabs">
+      <div class="control-panel-title">
+        <span>ATLAS Controls</span>
+        <span id="currentViewLabel">Library</span>
+      </div>
 
       <button
-        id="libraryTab"
-        class="tab-btn active"
+        id="collapseControlsButton"
+        type="button"
+        aria-label="Collapse or expand ATLAS controls"
+        aria-expanded="true"
       >
-        Library
-      </button>
-
-      <button
-        id="playlistsTab"
-        class="tab-btn"
-      >
-        Playlists
-      </button>
-
-      <button
-        id="settingsTab"
-        class="tab-btn"
-      >
-        Settings
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </button>
 
     </div>
 
-    <div id="status"></div>
-
-
-    <div id="libraryTools">
-
-      <button
-        id="exportBackupButton"
-        class="library-tool-btn"
-        type="button"
-      >
-        Export Backup
-      </button>
-
-      <button
-        id="restoreBackupButton"
-        class="library-tool-btn"
-        type="button"
-      >
-        Restore Backup
-      </button>
+    <div id="controlPanelBody">
 
       <input
-        id="restoreBackupInput"
-        type="file"
-        accept=".atlasmusic,.json,application/json"
+        id="search"
+        type="text"
+        placeholder="Search title, artist, or album..."
       >
+
+      <div id="tabs">
+
+        <button
+          id="libraryTab"
+          class="tab-btn active"
+        >
+          Library
+        </button>
+
+        <button
+          id="playlistsTab"
+          class="tab-btn"
+        >
+          Playlists
+        </button>
+
+        <button
+          id="settingsTab"
+          class="tab-btn"
+        >
+          Settings
+        </button>
+
+      </div>
+
+      <div id="status"></div>
+
+      <div id="libraryTools">
+
+        <button
+          id="exportBackupButton"
+          class="library-tool-btn"
+          type="button"
+        >
+          Export Backup
+        </button>
+
+        <button
+          id="restoreBackupButton"
+          class="library-tool-btn"
+          type="button"
+        >
+          Restore Backup
+        </button>
+
+        <input
+          id="restoreBackupInput"
+          type="file"
+          accept=".atlasmusic,.json,application/json"
+        >
+
+      </div>
 
     </div>
 
   </header>
+
+  <div id="importDrawerBackdrop"></div>
+
+  <aside id="importDrawer" aria-hidden="true">
+
+    <div id="importDrawerHeader">
+      <h2>Import Music</h2>
+      <button id="closeImportDrawerButton" type="button" aria-label="Close import drawer">&times;</button>
+    </div>
+
+    <p class="import-drawer-copy">
+      Add MP3 files directly to this device's private ATLAS Music library.
+    </p>
+
+    <div class="import-drawer-card">
+      <label for="fileInput">Choose MP3 files</label>
+      <input
+        id="fileInput"
+        type="file"
+        accept=".mp3,audio/mpeg"
+        multiple
+      >
+      <div class="import-note">Your music stays in this device's local ATLAS library.</div>
+    </div>
+
+  </aside>
+
+  <button id="importDrawerTab" type="button" aria-label="Open Import Music drawer">IMPORT</button>
 
 
   <div id="content"></div>
@@ -1864,6 +2184,27 @@ let repeatMode = "off";
 
 const fileInput =
   document.getElementById("fileInput");
+
+const controlPanel =
+  document.getElementById("controlPanel");
+
+const collapseControlsButton =
+  document.getElementById("collapseControlsButton");
+
+const currentViewLabel =
+  document.getElementById("currentViewLabel");
+
+const importDrawer =
+  document.getElementById("importDrawer");
+
+const importDrawerTab =
+  document.getElementById("importDrawerTab");
+
+const closeImportDrawerButton =
+  document.getElementById("closeImportDrawerButton");
+
+const importDrawerBackdrop =
+  document.getElementById("importDrawerBackdrop");
 
 const search =
   document.getElementById("search");
@@ -3229,6 +3570,53 @@ function restorePlayerState() {
   player.classList.toggle("expanded", !collapsed);
 }
 
+function setControlPanelCollapsed(collapsed) {
+  controlPanel.classList.toggle("collapsed", collapsed);
+  controlPanel.classList.toggle("expanded", !collapsed);
+
+  collapseControlsButton.setAttribute(
+    "aria-expanded",
+    collapsed ? "false" : "true"
+  );
+
+  localStorage.setItem(
+    "atlasControlPanelCollapsed",
+    collapsed ? "1" : "0"
+  );
+}
+
+function restoreControlPanelState() {
+  const collapsed =
+    localStorage.getItem("atlasControlPanelCollapsed") === "1";
+
+  setControlPanelCollapsed(collapsed);
+}
+
+collapseControlsButton.onclick =
+  () => {
+    setControlPanelCollapsed(
+      controlPanel.classList.contains("expanded")
+    );
+  };
+
+function setImportDrawerOpen(open) {
+  importDrawer.classList.toggle("open", open);
+  importDrawerBackdrop.classList.toggle("open", open);
+  importDrawer.setAttribute(
+    "aria-hidden",
+    open ? "false" : "true"
+  );
+}
+
+importDrawerTab.onclick =
+  () => setImportDrawerOpen(true);
+
+closeImportDrawerButton.onclick =
+  () => setImportDrawerOpen(false);
+
+importDrawerBackdrop.onclick =
+  () => setImportDrawerOpen(false);
+
 function setupMediaSessionControls() {
   if (!("mediaSession" in navigator)) {
     return;
@@ -3938,6 +4326,15 @@ function renderOpenPlaylist() {
 
 function renderCurrentView() {
 
+  if (currentViewLabel) {
+    currentViewLabel.textContent =
+      currentView === "library"
+        ? "Library"
+        : currentView === "playlists"
+          ? (openPlaylistId !== null ? "Playlist" : "Playlists")
+          : "Settings";
+  }
+
   libraryTab
     .classList
     .toggle(
@@ -3963,12 +4360,6 @@ function renderCurrentView() {
     );
 
   search.style.display =
-    currentView ===
-    "library"
-      ? "block"
-      : "none";
-
-  fileInput.style.display =
     currentView ===
     "library"
       ? "block"
@@ -4413,6 +4804,8 @@ fileInput.addEventListener(
       Array.from(
         fileInput.files
       );
+
+    setImportDrawerOpen(false);
 
     const mp3Files =
       selectedFiles.filter(
@@ -5395,6 +5788,7 @@ async function startApp() {
 
     loadTheme();
     restorePlayerState();
+    restoreControlPanelState();
     setupMediaSessionControls();
     updateMiniPlayIcon();
 
