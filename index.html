@@ -54,6 +54,12 @@
 
       --red: #ff405c;
       --red2: #ba1638;
+
+      --smoke-left: rgba(53, 167, 255, 0.34);
+      --smoke-right: rgba(255, 64, 92, 0.32);
+      --theme-left: #35a7ff;
+      --theme-right: #ff405c;
+      --neon: #35a7ff;
     }
 
     html {
@@ -105,7 +111,10 @@
       position: relative;
       overflow: hidden;
 
-      margin: 14px 14px 10px;
+      margin:
+        calc(env(safe-area-inset-top) + 10px)
+        14px
+        10px;
 
       padding: 22px 18px 20px;
 
@@ -1022,10 +1031,414 @@
       display: none;
     }
 
+    /* =========================
+       ATLAS AMBIENT THEME
+    ========================= */
+
+    #ambientBackground {
+      position: fixed;
+      inset: 0;
+      z-index: -5;
+      pointer-events: none;
+      overflow: hidden;
+      background: #07090d;
+    }
+
+    .smokeBlob {
+      position: absolute;
+      width: 78vw;
+      height: 78vw;
+      max-width: 760px;
+      max-height: 760px;
+      border-radius: 50%;
+      filter: blur(62px);
+      opacity: 1;
+      will-change: transform;
+    }
+
+    .smokeBlob.left {
+      left: -34vw;
+      top: 5vh;
+      background: var(--smoke-left);
+      animation: atlasSmokeLeft 15s ease-in-out infinite alternate;
+    }
+
+    .smokeBlob.right {
+      right: -36vw;
+      top: 22vh;
+      background: var(--smoke-right);
+      animation: atlasSmokeRight 18s ease-in-out infinite alternate;
+    }
+
+    .smokeBlob.center {
+      width: 55vw;
+      height: 55vw;
+      left: 24vw;
+      bottom: -24vw;
+      background: color-mix(in srgb, var(--neon) 30%, transparent);
+      opacity: 0.68;
+      animation: atlasSmokeCenter 20s ease-in-out infinite alternate;
+    }
+
+    #neonFrame {
+      position: fixed;
+      inset: 5px;
+      z-index: 90;
+      pointer-events: none;
+      border-radius: 24px;
+      border: 3px solid color-mix(in srgb, var(--neon) 82%, white 8%);
+      box-shadow:
+        inset 0 0 18px color-mix(in srgb, var(--neon) 46%, transparent),
+        inset 0 0 42px color-mix(in srgb, var(--neon) 16%, transparent),
+        0 0 10px color-mix(in srgb, var(--neon) 82%, transparent),
+        0 0 28px color-mix(in srgb, var(--neon) 50%, transparent),
+        0 0 54px color-mix(in srgb, var(--neon) 22%, transparent);
+      opacity: 0.96;
+    }
+
+    @keyframes atlasSmokeLeft {
+      from { transform: translate3d(-5%, -4%, 0) scale(0.92); }
+      to { transform: translate3d(18%, 12%, 0) scale(1.14); }
+    }
+
+    @keyframes atlasSmokeRight {
+      from { transform: translate3d(8%, -8%, 0) scale(1); }
+      to { transform: translate3d(-16%, 18%, 0) scale(1.18); }
+    }
+
+    @keyframes atlasSmokeCenter {
+      from { transform: translate3d(-12%, 8%, 0) scale(0.88); }
+      to { transform: translate3d(10%, -14%, 0) scale(1.1); }
+    }
+
+    body {
+      background: rgba(7, 9, 13, 0.76);
+    }
+
+    #atlasBanner {
+      box-shadow:
+        0 18px 50px rgba(0,0,0,0.4),
+        0 0 28px color-mix(in srgb, var(--neon) 14%, transparent),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    /* =========================
+       MINI PLAYER
+    ========================= */
+
+    #nowPlayingRow {
+      margin-bottom: 0;
+    }
+
+    #player.expanded #nowPlayingRow {
+      margin-bottom: 8px;
+    }
+
+    .miniControls {
+      display: none;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #player.collapsed .miniControls {
+      display: flex;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      color: #f5f7fb;
+      background: rgba(43, 48, 61, 0.88);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 11px;
+      cursor: pointer;
+    }
+
+    .icon-btn svg,
+    .player-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+      display: block;
+    }
+
+    #collapsePlayerButton {
+      margin-left: 2px;
+    }
+
+    #player.collapsed {
+      padding: 8px 10px;
+      border-radius: 17px;
+    }
+
+    #player.collapsed #playbackButtons,
+    #player.collapsed audio {
+      display: none;
+    }
+
+    #player.collapsed #nowPlayingArt {
+      width: 44px;
+      height: 44px;
+    }
+
+    #player.collapsed #nowPlayingArtist {
+      display: none;
+    }
+
+    #player.collapsed #nowPlayingTitle {
+      font-size: 13px;
+    }
+
+    #player.expanded .miniControls {
+      display: none;
+    }
+
+    #player.expanded #collapsePlayerButton svg {
+      transform: rotate(180deg);
+    }
+
+    /* =========================
+       SETTINGS
+    ========================= */
+
+    .settings-wrap {
+      display: grid;
+      gap: 12px;
+    }
+
+    .settings-card {
+      padding: 16px;
+      border-radius: 17px;
+      background: linear-gradient(145deg, rgba(24,28,38,.94), rgba(12,15,21,.94));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 12px 30px rgba(0,0,0,.22);
+    }
+
+    .settings-card h3 {
+      margin: 0 0 5px;
+      font-size: 16px;
+    }
+
+    .settings-card p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .theme-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 0;
+      border-top: 1px solid rgba(255,255,255,.055);
+    }
+
+    .theme-row:first-of-type {
+      border-top: 0;
+    }
+
+    .theme-row label {
+      color: #e7ebf3;
+      font-size: 13px;
+    }
+
+    .theme-select {
+      min-width: 132px;
+      padding: 9px 10px;
+      color: white;
+      background: #222733;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    .theme-preview {
+      height: 78px;
+      margin-top: 12px;
+      border-radius: 15px;
+      border: 1px solid color-mix(in srgb, var(--neon) 45%, transparent);
+      background:
+        radial-gradient(circle at 18% 60%, var(--smoke-left), transparent 38%),
+        radial-gradient(circle at 82% 38%, var(--smoke-right), transparent 40%),
+        #0a0d12;
+      box-shadow: inset 0 0 18px color-mix(in srgb, var(--neon) 18%, transparent);
+    }
+
+    #resetThemeButton {
+      width: 100%;
+      margin-top: 12px;
+      padding: 11px;
+      border-radius: 11px;
+      border: 1px solid rgba(255,255,255,.08);
+      color: #e7ebf3;
+      background: rgba(43,48,61,.9);
+      cursor: pointer;
+    }
+
+
+    /* =========================
+       DEEP THEME TINTING
+    ========================= */
+
+    body {
+      background:
+        linear-gradient(rgba(4, 6, 10, 0.72), rgba(4, 6, 10, 0.82)),
+        radial-gradient(circle at 4% 24%, color-mix(in srgb, var(--theme-left) 22%, transparent), transparent 32%),
+        radial-gradient(circle at 96% 28%, color-mix(in srgb, var(--theme-right) 22%, transparent), transparent 34%),
+        #05070b;
+    }
+
+    #atlasBanner,
+    header,
+    .song,
+    .playlist-card,
+    .settings-card,
+    .modal,
+    #player {
+      border-color: color-mix(in srgb, var(--neon) 26%, rgba(255,255,255,.08));
+    }
+
+    #atlasBanner {
+      background:
+        radial-gradient(circle at 4% 35%, color-mix(in srgb, var(--theme-left) 22%, transparent), transparent 42%),
+        radial-gradient(circle at 96% 30%, color-mix(in srgb, var(--theme-right) 22%, transparent), transparent 44%),
+        linear-gradient(135deg, rgba(14, 20, 31, 0.95), rgba(7, 9, 14, 0.96));
+      box-shadow:
+        0 18px 50px rgba(0,0,0,.46),
+        -10px 0 26px color-mix(in srgb, var(--theme-left) 16%, transparent),
+        10px 0 26px color-mix(in srgb, var(--theme-right) 16%, transparent),
+        0 0 34px color-mix(in srgb, var(--neon) 20%, transparent),
+        inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    header {
+      background:
+        linear-gradient(90deg,
+          color-mix(in srgb, var(--theme-left) 8%, rgba(8,10,15,.94)),
+          rgba(8,10,15,.94) 50%,
+          color-mix(in srgb, var(--theme-right) 8%, rgba(8,10,15,.94))
+        );
+      box-shadow:
+        inset 0 -1px 0 color-mix(in srgb, var(--neon) 16%, transparent),
+        0 8px 24px rgba(0,0,0,.22);
+    }
+
+    #fileInput,
+    #search,
+    .tab-btn,
+    .library-tool-btn,
+    .theme-select,
+    .small-btn,
+    .player-btn {
+      border-color: color-mix(in srgb, var(--neon) 20%, rgba(255,255,255,.06));
+    }
+
+    .tab-btn.active {
+      background:
+        linear-gradient(135deg,
+          color-mix(in srgb, var(--theme-left) 28%, rgba(23,29,42,.96)),
+          color-mix(in srgb, var(--theme-right) 16%, rgba(20,24,35,.96))
+        );
+      border-color: color-mix(in srgb, var(--neon) 54%, transparent);
+      box-shadow:
+        inset 0 0 18px color-mix(in srgb, var(--neon) 11%, transparent),
+        0 0 14px color-mix(in srgb, var(--neon) 12%, transparent);
+    }
+
+    .song,
+    .playlist-card,
+    .settings-card {
+      background:
+        linear-gradient(105deg,
+          color-mix(in srgb, var(--theme-left) 7%, rgba(18,22,31,.97)),
+          rgba(15,18,25,.97) 50%,
+          color-mix(in srgb, var(--theme-right) 7%, rgba(18,21,29,.97))
+        );
+      box-shadow:
+        inset 0 0 22px rgba(255,255,255,.008),
+        -8px 0 20px color-mix(in srgb, var(--theme-left) 5%, transparent),
+        8px 0 20px color-mix(in srgb, var(--theme-right) 5%, transparent),
+        0 7px 20px rgba(0,0,0,.18);
+    }
+
+    .song.playing {
+      border-color: color-mix(in srgb, var(--neon) 66%, transparent);
+      background:
+        linear-gradient(105deg,
+          color-mix(in srgb, var(--theme-left) 21%, rgba(18,24,36,.98)),
+          rgba(15,20,29,.98) 50%,
+          color-mix(in srgb, var(--theme-right) 16%, rgba(18,22,31,.98))
+        );
+      box-shadow:
+        -10px 0 26px color-mix(in srgb, var(--theme-left) 12%, transparent),
+        10px 0 26px color-mix(in srgb, var(--theme-right) 10%, transparent),
+        0 0 24px color-mix(in srgb, var(--neon) 18%, transparent);
+    }
+
+    #player {
+      background:
+        linear-gradient(100deg,
+          color-mix(in srgb, var(--theme-left) 10%, rgba(16,19,27,.96)),
+          rgba(15,18,25,.97) 52%,
+          color-mix(in srgb, var(--theme-right) 10%, rgba(16,19,27,.96))
+        );
+      border: 1px solid color-mix(in srgb, var(--neon) 45%, rgba(255,255,255,.08));
+      box-shadow:
+        -10px 0 24px color-mix(in srgb, var(--theme-left) 12%, transparent),
+        10px 0 24px color-mix(in srgb, var(--theme-right) 12%, transparent),
+        0 0 22px color-mix(in srgb, var(--neon) 18%, transparent),
+        0 16px 40px rgba(0,0,0,.52);
+    }
+
+    .playlist-add-btn,
+    .save-btn,
+    #newPlaylistButton {
+      background:
+        linear-gradient(135deg,
+          color-mix(in srgb, var(--theme-left) 68%, #10243e),
+          color-mix(in srgb, var(--neon) 42%, #10203a)
+        );
+      border-color: color-mix(in srgb, var(--neon) 42%, transparent);
+    }
+
+    #restoreBackupButton {
+      border-color: color-mix(in srgb, var(--theme-right) 38%, transparent);
+      box-shadow: inset 0 0 16px color-mix(in srgb, var(--theme-right) 5%, transparent);
+    }
+
+    #exportBackupButton {
+      border-color: color-mix(in srgb, var(--theme-left) 38%, transparent);
+      box-shadow: inset 0 0 16px color-mix(in srgb, var(--theme-left) 5%, transparent);
+    }
+
+    .theme-preview {
+      border: 2px solid color-mix(in srgb, var(--neon) 72%, transparent);
+      background:
+        radial-gradient(circle at 10% 55%, color-mix(in srgb, var(--theme-left) 64%, transparent), transparent 43%),
+        radial-gradient(circle at 90% 45%, color-mix(in srgb, var(--theme-right) 64%, transparent), transparent 43%),
+        #080b11;
+      box-shadow:
+        inset 0 0 24px color-mix(in srgb, var(--neon) 24%, transparent),
+        0 0 18px color-mix(in srgb, var(--neon) 18%, transparent);
+    }
+
+
   </style>
 </head>
 
 <body>
+
+  <div id="ambientBackground" aria-hidden="true">
+    <div class="smokeBlob left"></div>
+    <div class="smokeBlob right"></div>
+    <div class="smokeBlob center"></div>
+  </div>
+  <div id="neonFrame" aria-hidden="true"></div>
 
   <!-- ATLAS BRANDING -->
 
@@ -1099,6 +1512,13 @@
         Playlists
       </button>
 
+      <button
+        id="settingsTab"
+        class="tab-btn"
+      >
+        Settings
+      </button>
+
     </div>
 
     <div id="status"></div>
@@ -1138,7 +1558,7 @@
 
   <!-- PLAYER -->
 
-  <div id="player">
+  <div id="player" class="expanded">
 
     <div id="nowPlayingRow">
 
@@ -1157,29 +1577,36 @@
 
       </div>
 
+      <div class="miniControls">
+        <button id="miniPreviousButton" class="icon-btn" type="button" aria-label="Previous track">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6V5zm3.5 7 8.5 7V5l-8.5 7z"/></svg>
+        </button>
+        <button id="miniPlayPauseButton" class="icon-btn" type="button" aria-label="Play or pause">
+          <svg id="miniPlayIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="miniNextButton" class="icon-btn" type="button" aria-label="Next track">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2V5zM6 5v14l8.5-7L6 5z"/></svg>
+        </button>
+      </div>
+
+      <button id="collapsePlayerButton" class="icon-btn" type="button" aria-label="Collapse or expand player">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+      </button>
+
     </div>
 
     <div id="playbackButtons">
 
-      <button
-        id="shuffleButton"
-        class="player-btn"
-      >
-        🔀
+      <button id="shuffleButton" class="player-btn" type="button" aria-label="Shuffle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5h-2V6.41l-4.29 4.3-1.42-1.42L17.59 5H16V3zM3 7h4.59l9 9H19v-2h2v5h-5v-2h.59l-9-9H3V7zm8.71 2.29 1.42 1.42L7.83 16H3v-2h4l4.71-4.71z"/></svg>
       </button>
 
-      <button
-        id="previousButton"
-        class="player-btn"
-      >
-        ⏮
+      <button id="previousButton" class="player-btn" type="button" aria-label="Previous track">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6V5zm3.5 7 8.5 7V5l-8.5 7z"/></svg>
       </button>
 
-      <button
-        id="nextButton"
-        class="player-btn"
-      >
-        ⏭
+      <button id="nextButton" class="player-btn" type="button" aria-label="Next track">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2V5zM6 5v14l8.5-7L6 5z"/></svg>
       </button>
 
       <button
@@ -1453,6 +1880,12 @@ const libraryTab =
 const playlistsTab =
   document.getElementById("playlistsTab");
 
+const settingsTab =
+  document.getElementById("settingsTab");
+
+const libraryTools =
+  document.getElementById("libraryTools");
+
 const audioPlayer =
   document.getElementById("audioPlayer");
 
@@ -1476,6 +1909,24 @@ const nextButton =
 
 const repeatButton =
   document.getElementById("repeatButton");
+
+const player =
+  document.getElementById("player");
+
+const collapsePlayerButton =
+  document.getElementById("collapsePlayerButton");
+
+const miniPreviousButton =
+  document.getElementById("miniPreviousButton");
+
+const miniNextButton =
+  document.getElementById("miniNextButton");
+
+const miniPlayPauseButton =
+  document.getElementById("miniPlayPauseButton");
+
+const miniPlayIcon =
+  document.getElementById("miniPlayIcon");
 
 
 const editorBackdrop =
@@ -1545,6 +1996,158 @@ const restoreBackupButton =
 const restoreBackupInput =
   document.getElementById("restoreBackupInput");
 
+
+const THEME_STORAGE_KEY = "atlasMusicThemeV1";
+
+const THEME_COLORS = {
+  "Electric Blue": "#35a7ff",
+  "Crimson Red": "#ff405c",
+  "Royal Purple": "#a855f7",
+  "Cyber Cyan": "#22d3ee",
+  "Emerald": "#22c55e",
+  "Neon Orange": "#f97316",
+  "Hot Pink": "#ec4899",
+  "Gold": "#facc15",
+  "Ice White": "#f5f7fb"
+};
+
+const DEFAULT_THEME = {
+  leftSmoke: "#35a7ff",
+  rightSmoke: "#ff405c",
+  neon: "#35a7ff"
+};
+
+let atlasTheme = {
+  ...DEFAULT_THEME
+};
+
+function hexToRgba(hex, alpha) {
+  const value = hex.replace("#", "");
+  const number = parseInt(value, 16);
+  const r = (number >> 16) & 255;
+  const g = (number >> 8) & 255;
+  const b = number & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function applyTheme(theme) {
+  atlasTheme = {
+    ...DEFAULT_THEME,
+    ...theme
+  };
+
+  const root = document.documentElement;
+  root.style.setProperty(
+    "--smoke-left",
+    hexToRgba(atlasTheme.leftSmoke, 0.42)
+  );
+  root.style.setProperty(
+    "--smoke-right",
+    hexToRgba(atlasTheme.rightSmoke, 0.40)
+  );
+  root.style.setProperty(
+    "--theme-left",
+    atlasTheme.leftSmoke
+  );
+  root.style.setProperty(
+    "--theme-right",
+    atlasTheme.rightSmoke
+  );
+  root.style.setProperty(
+    "--neon",
+    atlasTheme.neon
+  );
+}
+
+function saveTheme(theme) {
+  localStorage.setItem(
+    THEME_STORAGE_KEY,
+    JSON.stringify(theme)
+  );
+  applyTheme(theme);
+}
+
+function loadTheme() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(THEME_STORAGE_KEY) || "null"
+    );
+    applyTheme(saved || DEFAULT_THEME);
+  } catch (error) {
+    applyTheme(DEFAULT_THEME);
+  }
+}
+
+function colorOptions(selected) {
+  return Object.entries(THEME_COLORS)
+    .map(([name, value]) =>
+      `<option value="${value}" ${value === selected ? "selected" : ""}>${name}</option>`
+    )
+    .join("");
+}
+
+function renderSettings() {
+  content.innerHTML = `
+    <div class="settings-wrap">
+      <div class="settings-card">
+        <h3>Ambient Theme</h3>
+        <p>Give each device its own ATLAS look. Left smoke, right smoke, and the neon edge can all use different colors.</p>
+
+        <div class="theme-row">
+          <label for="leftSmokeSelect">Left smoke</label>
+          <select id="leftSmokeSelect" class="theme-select">
+            ${colorOptions(atlasTheme.leftSmoke)}
+          </select>
+        </div>
+
+        <div class="theme-row">
+          <label for="rightSmokeSelect">Right smoke</label>
+          <select id="rightSmokeSelect" class="theme-select">
+            ${colorOptions(atlasTheme.rightSmoke)}
+          </select>
+        </div>
+
+        <div class="theme-row">
+          <label for="neonSelect">Screen neon</label>
+          <select id="neonSelect" class="theme-select">
+            ${colorOptions(atlasTheme.neon)}
+          </select>
+        </div>
+
+        <div class="theme-preview" aria-hidden="true"></div>
+        <button id="resetThemeButton" type="button">Reset to ATLAS Blue / Red</button>
+      </div>
+    </div>
+  `;
+
+  const leftSmokeSelect =
+    document.getElementById("leftSmokeSelect");
+  const rightSmokeSelect =
+    document.getElementById("rightSmokeSelect");
+  const neonSelect =
+    document.getElementById("neonSelect");
+  const resetThemeButton =
+    document.getElementById("resetThemeButton");
+
+  const updateThemeFromControls = () => {
+    saveTheme({
+      leftSmoke: leftSmokeSelect.value,
+      rightSmoke: rightSmokeSelect.value,
+      neon: neonSelect.value
+    });
+  };
+
+  leftSmokeSelect.onchange = updateThemeFromControls;
+  rightSmokeSelect.onchange = updateThemeFromControls;
+  neonSelect.onchange = updateThemeFromControls;
+
+  resetThemeButton.onclick = () => {
+    saveTheme(DEFAULT_THEME);
+    renderSettings();
+  };
+
+  statusText.textContent = "Appearance settings";
+}
 
 function makeFallbackArtwork() {
 
@@ -2264,6 +2867,95 @@ function updateNowPlaying(song) {
     song.artwork ||
     fallbackArtwork;
 
+  updateMediaSession(song);
+
+}
+
+
+function getArtworkType(src) {
+  if (!src || !src.startsWith("data:")) {
+    return "image/png";
+  }
+
+  const match = src.match(/^data:([^;,]+)/i);
+  return match ? match[1] : "image/jpeg";
+}
+
+
+function updateMediaSession(song) {
+  if (!("mediaSession" in navigator) || !("MediaMetadata" in window)) {
+    return;
+  }
+
+  const artworkSource =
+    song.artwork ||
+    new URL("./icon-512.png", window.location.href).href;
+
+  try {
+    navigator.mediaSession.metadata =
+      new MediaMetadata({
+        title:
+          song.title ||
+          song.filename ||
+          "Unknown Song",
+        artist:
+          song.artist ||
+          "Unknown Artist",
+        album:
+          song.album ||
+          "ATLAS Music",
+        artwork: [
+          {
+            src: artworkSource,
+            type: getArtworkType(artworkSource)
+          }
+        ]
+      });
+  } catch (error) {
+    console.warn(
+      "Media Session metadata could not be updated.",
+      error
+    );
+  }
+}
+
+
+function updateMediaPositionState() {
+  if (!("mediaSession" in navigator)) {
+    return;
+  }
+
+  if (
+    !Number.isFinite(audioPlayer.duration) ||
+    audioPlayer.duration <= 0
+  ) {
+    return;
+  }
+
+  try {
+    navigator.mediaSession.setPositionState({
+      duration: audioPlayer.duration,
+      playbackRate: audioPlayer.playbackRate || 1,
+      position: Math.min(
+        audioPlayer.currentTime,
+        audioPlayer.duration
+      )
+    });
+  } catch (error) {
+    // Some Safari/iOS versions expose Media Session
+    // without supporting position state completely.
+  }
+}
+
+
+function updateMiniPlayIcon() {
+  if (audioPlayer.paused) {
+    miniPlayIcon.innerHTML =
+      '<path d="M8 5v14l11-7z"/>';
+  } else {
+    miniPlayIcon.innerHTML =
+      '<path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/>';
+  }
 }
 
 
@@ -2489,6 +3181,97 @@ nextButton.onclick =
 previousButton.onclick =
   playPrevious;
 
+miniPreviousButton.onclick =
+  playPrevious;
+
+miniNextButton.onclick =
+  playNext;
+
+miniPlayPauseButton.onclick =
+  () => {
+    if (!audioPlayer.src) {
+      return;
+    }
+
+    if (audioPlayer.paused) {
+      audioPlayer.play().catch(console.warn);
+    } else {
+      audioPlayer.pause();
+    }
+  };
+
+collapsePlayerButton.onclick =
+  () => {
+    const shouldCollapse =
+      player.classList.contains("expanded");
+
+    player.classList.toggle(
+      "collapsed",
+      shouldCollapse
+    );
+
+    player.classList.toggle(
+      "expanded",
+      !shouldCollapse
+    );
+
+    localStorage.setItem(
+      "atlasPlayerCollapsed",
+      shouldCollapse ? "1" : "0"
+    );
+  };
+
+function restorePlayerState() {
+  const collapsed =
+    localStorage.getItem("atlasPlayerCollapsed") === "1";
+
+  player.classList.toggle("collapsed", collapsed);
+  player.classList.toggle("expanded", !collapsed);
+}
+
+function setupMediaSessionControls() {
+  if (!("mediaSession" in navigator)) {
+    return;
+  }
+
+  const handlers = {
+    play: () => audioPlayer.play().catch(console.warn),
+    pause: () => audioPlayer.pause(),
+    previoustrack: () => playPrevious(),
+    nexttrack: () => playNext()
+  };
+
+  Object.entries(handlers).forEach(
+    ([action, handler]) => {
+      try {
+        navigator.mediaSession.setActionHandler(
+          action,
+          handler
+        );
+      } catch (error) {
+        console.warn(
+          `Media action ${action} is not supported.`,
+          error
+        );
+      }
+    }
+  );
+
+  ["seekbackward", "seekforward"].forEach(
+    action => {
+      try {
+        navigator.mediaSession.setActionHandler(
+          action,
+          null
+        );
+      } catch (error) {
+        // Ignore unsupported actions.
+      }
+    }
+  );
+}
+
+
 
 shuffleButton.onclick =
   () => {
@@ -2566,6 +3349,40 @@ audioPlayer.addEventListener(
     playNext();
 
   }
+);
+
+
+audioPlayer.addEventListener(
+  "play",
+  () => {
+    updateMiniPlayIcon();
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "playing";
+    }
+  }
+);
+
+
+audioPlayer.addEventListener(
+  "pause",
+  () => {
+    updateMiniPlayIcon();
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "paused";
+    }
+  }
+);
+
+
+audioPlayer.addEventListener(
+  "timeupdate",
+  updateMediaPositionState
+);
+
+
+audioPlayer.addEventListener(
+  "durationchange",
+  updateMediaPositionState
 );
 
 
@@ -3137,6 +3954,14 @@ function renderCurrentView() {
       "playlists"
     );
 
+  settingsTab
+    .classList
+    .toggle(
+      "active",
+      currentView ===
+      "settings"
+    );
+
   search.style.display =
     currentView ===
     "library"
@@ -3149,6 +3974,12 @@ function renderCurrentView() {
       ? "block"
       : "none";
 
+  libraryTools.style.display =
+    currentView ===
+    "library"
+      ? "grid"
+      : "none";
+
 
   if (
     currentView ===
@@ -3156,6 +3987,13 @@ function renderCurrentView() {
   ) {
 
     renderLibrary();
+
+  } else if (
+    currentView ===
+    "settings"
+  ) {
+
+    renderSettings();
 
   } else if (
     currentView ===
@@ -3193,6 +4031,20 @@ playlistsTab.onclick =
 
     currentView =
       "playlists";
+
+    openPlaylistId =
+      null;
+
+    renderCurrentView();
+
+  };
+
+
+settingsTab.onclick =
+  () => {
+
+    currentView =
+      "settings";
 
     openPlaylistId =
       null;
@@ -4540,6 +5392,11 @@ async function startApp() {
 
     statusText.textContent =
       "Loading library...";
+
+    loadTheme();
+    restorePlayerState();
+    setupMediaSessionControls();
+    updateMiniPlayIcon();
 
     await openDatabase();
 
