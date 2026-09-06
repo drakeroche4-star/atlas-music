@@ -1865,7 +1865,7 @@
         accept=".mp3,audio/mpeg"
         multiple
       >
-      <div class="import-note">Your music stays in this device's local ATLAS library.</div>
+      <div class="import-note">Your music stays in this device's local ATLAS library. ATLAS uses embedded artwork first, then automatically looks online for a cover when needed.</div>
     </div>
 
   </aside>
@@ -3033,6 +3033,292 @@ function readMetadata(file) {
 
     }
   );
+
+}
+
+
+function normalizeArtworkText(value) {
+
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+}
+
+
+function supplementMetadataFromFilename(metadata, file) {
+
+  const updated = {
+    ...metadata
+  };
+
+  const baseName =
+    file.name.replace(/\.mp3$/i, "").trim();
+
+  // A lot of downloaded tracks are named "Artist - Song.mp3".
+  // Use that as a fallback only when the MP3 tags did not already
+  // provide the missing information.
+  const parts = baseName.split(/\s+-\s+/);
+
+  if (
+    parts.length >= 2 &&
+    !updated.artist
+  ) {
+
+    updated.artist =
+      parts.shift().trim();
+
+    if (
+      !updated.title ||
+      updated.title === baseName
+    ) {
+
+      updated.title =
+        parts.join(" - ").trim();
+
+    }
+
+  }
+
+  return updated;
+
+}
+
+
+function artworkMatchScore(result, metadata) {
+
+  const wantedTitle =
+    normalizeArtworkText(metadata.title);
+
+  const wantedArtist =
+    normalizeArtworkText(metadata.artist);
+
+  const wantedAlbum =
+    normalizeArtworkText(metadata.album);
+
+  const resultTitle =
+    normalizeArtworkText(result.trackName);
+
+  const resultArtist =
+    normalizeArtworkText(result.artistName);
+
+  const resultAlbum =
+    normalizeArtworkText(result.collectionName);
+
+  let score = 0;
+
+  if (wantedTitle) {
+
+    if (resultTitle === wantedTitle) {
+      score += 70;
+    } else if (
+      resultTitle.includes(wantedTitle) ||
+      wantedTitle.includes(resultTitle)
+    ) {
+      score += 35;
+    }
+
+  }
+
+  if (wantedArtist) {
+
+    if (resultArtist === wantedArtist) {
+      score += 60;
+    } else if (
+      resultArtist.includes(wantedArtist) ||
+      wantedArtist.includes(resultArtist)
+    ) {
+      score += 30;
+    }
+
+  }
+
+  if (wantedAlbum) {
+
+    if (resultAlbum === wantedAlbum) {
+      score += 35;
+    } else if (
+      resultAlbum.includes(wantedAlbum) ||
+      wantedAlbum.includes(resultAlbum)
+    ) {
+      score += 15;
+    }
+
+  }
+
+  return score;
+
+}
+
+
+function artworkUrlToDataUrl(url) {
+
+  return fetch(url)
+    .then(response => {
+
+      if (!response.ok) {
+        throw new Error(
+          "Artwork download failed: " +
+          response.status
+        );
+      }
+
+      return response.blob();
+
+    })
+    .then(blob =>
+      new Promise(
+        (resolve, reject) => {
+
+          const reader =
+            new FileReader();
+
+          reader.onload =
+            () => resolve(reader.result);
+
+          reader.onerror = reject;
+
+          reader.readAsDataURL(blob);
+
+        }
+      )
+    );
+
+}
+
+
+async function findOnlineArtwork(metadata) {
+
+  const title =
+    String(metadata.title || "").trim();
+
+  const artist =
+    String(metadata.artist || "").trim();
+
+  const album =
+    String(metadata.album || "").trim();
+
+  if (!title && !artist && !album) {
+    return "";
+  }
+
+  const searchTerm =
+    [artist, title, album]
+      .filter(Boolean)
+      .join(" ");
+
+  try {
+
+    const searchUrl =
+      "https://itunes.apple.com/search" +
+      "?media=music" +
+      "&entity=song" +
+      "&limit=25" +
+      "&term=" +
+      encodeURIComponent(searchTerm);
+
+    const response =
+      await fetch(searchUrl);
+
+    if (!response.ok) {
+      throw new Error(
+        "Artwork search failed: " +
+        response.status
+      );
+    }
+
+    const data =
+      await response.json();
+
+    const results =
+      Array.isArray(data.results) ?
+        data.results :
+        [];
+
+    if (results.length === 0) {
+      return "";
+    }
+
+    let bestResult = null;
+    let bestScore = -1;
+
+    for (const result of results) {
+
+      if (
+        !result.artworkUrl100 &&
+        !result.artworkUrl60
+      ) {
+        continue;
+      }
+
+      const score =
+        artworkMatchScore(
+          result,
+          metadata
+        );
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestResult = result;
+      }
+
+    }
+
+    if (!bestResult) {
+      return "";
+    }
+
+    let artworkUrl =
+      bestResult.artworkUrl100 ||
+      bestResult.artworkUrl60 ||
+      "";
+
+    // Apple artwork URLs usually contain a size token such as
+    // 100x100bb. Ask for a larger square cover when available.
+    artworkUrl =
+      artworkUrl.replace(
+        /\d+x\d+bb(?=\.)/i,
+        "600x600bb"
+      );
+
+    if (!artworkUrl) {
+      return "";
+    }
+
+    try {
+
+      // Saving a data URL keeps the cover available offline and
+      // includes it in ATLAS library backups.
+      return await artworkUrlToDataUrl(
+        artworkUrl
+      );
+
+    } catch (downloadError) {
+
+      console.warn(
+        "ATLAS could not cache artwork locally; using the online URL instead.",
+        downloadError
+      );
+
+      // Still show the cover if the image host blocks direct caching.
+      return artworkUrl;
+
+    }
+
+  } catch (error) {
+
+    console.warn(
+      "ATLAS automatic artwork lookup failed.",
+      error
+    );
+
+    return "";
+
+  }
 
 }
 
@@ -4483,8 +4769,14 @@ async function openAddEditor(file) {
   deleteSongButton.style.display =
     "none";
 
-  const metadata =
+  let metadata =
     await readMetadata(
+      file
+    );
+
+  metadata =
+    supplementMetadataFromFilename(
+      metadata,
       file
     );
 
@@ -4499,6 +4791,40 @@ async function openAddEditor(file) {
 
   pendingArtwork =
     metadata.artwork || "";
+
+  // Embedded artwork always wins. If the MP3 has no cover,
+  // ATLAS automatically searches for one online.
+  if (!pendingArtwork) {
+
+    statusText.textContent =
+      "ATLAS is finding album artwork...";
+
+    coverPreview.src =
+      fallbackArtwork;
+
+    pendingArtwork =
+      await findOnlineArtwork(
+        metadata
+      );
+
+    if (pendingArtwork) {
+
+      statusText.textContent =
+        "Album artwork found automatically.";
+
+    } else {
+
+      statusText.textContent =
+        "No automatic artwork match found. You can still choose a cover manually.";
+
+    }
+
+  } else {
+
+    statusText.textContent =
+      "Using artwork embedded in the MP3.";
+
+  }
 
   coverPreview.src =
     pendingArtwork ||
