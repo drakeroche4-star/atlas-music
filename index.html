@@ -921,6 +921,44 @@
       width: 100%;
     }
 
+    #artworkStatus {
+      min-height: 18px;
+      margin: -5px 0 12px;
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
+    #artworkStatus.searching {
+      color: #cfe8ff;
+    }
+
+    #artworkStatus.success {
+      color: #b8ffd4;
+    }
+
+    #artworkStatus.error {
+      color: #ffc5cd;
+    }
+
+    #findArtworkButton {
+      width: 100%;
+      margin-top: 9px;
+      padding: 10px 12px;
+      color: #eaf4ff;
+      font-weight: 750;
+      background: rgba(38, 105, 196, 0.28);
+      border: 1px solid rgba(75, 151, 255, 0.34);
+      border-radius: 11px;
+      cursor: pointer;
+    }
+
+    #findArtworkButton:disabled {
+      opacity: .55;
+      cursor: default;
+    }
+
     .modal-actions {
       display: flex;
 
@@ -1964,6 +2002,8 @@
         alt="Album cover"
       >
 
+      <div id="artworkStatus" aria-live="polite"></div>
+
       <div class="field">
 
         <label>
@@ -1975,6 +2015,13 @@
           type="file"
           accept="image/jpeg,image/png,image/webp"
         >
+
+        <button
+          id="findArtworkButton"
+          type="button"
+        >
+          Find Artwork Online
+        </button>
 
       </div>
 
@@ -2281,6 +2328,12 @@ const coverPreview =
 
 const coverInput =
   document.getElementById("coverInput");
+
+const artworkStatus =
+  document.getElementById("artworkStatus");
+
+const findArtworkButton =
+  document.getElementById("findArtworkButton");
 
 const titleInput =
   document.getElementById("titleInput");
@@ -3191,7 +3244,12 @@ function artworkUrlToDataUrl(url) {
 }
 
 
+let lastArtworkLookupError = "";
+
+
 async function findOnlineArtwork(metadata) {
+
+  lastArtworkLookupError = "";
 
   const title =
     String(metadata.title || "").trim();
@@ -3206,38 +3264,61 @@ async function findOnlineArtwork(metadata) {
     return "";
   }
 
-  const searchTerm =
-    [artist, title, album]
-      .filter(Boolean)
-      .join(" ");
+  const searchTerms = [];
+
+  const addSearchTerm = value => {
+    const cleaned = String(value || "").trim();
+    if (cleaned && !searchTerms.includes(cleaned)) {
+      searchTerms.push(cleaned);
+    }
+  };
+
+  addSearchTerm([artist, title].filter(Boolean).join(" "));
+  addSearchTerm([artist, title, album].filter(Boolean).join(" "));
+  addSearchTerm([title, album].filter(Boolean).join(" "));
+  addSearchTerm(title);
 
   try {
 
-    const searchUrl =
-      "https://itunes.apple.com/search" +
-      "?media=music" +
-      "&entity=song" +
-      "&limit=25" +
-      "&term=" +
-      encodeURIComponent(searchTerm);
+    let results = [];
 
-    const response =
-      await fetch(searchUrl);
+    for (const searchTerm of searchTerms) {
 
-    if (!response.ok) {
-      throw new Error(
-        "Artwork search failed: " +
-        response.status
-      );
+      const searchUrl =
+        "https://itunes.apple.com/search" +
+        "?media=music" +
+        "&entity=song" +
+        "&country=US" +
+        "&limit=30" +
+        "&term=" +
+        encodeURIComponent(searchTerm);
+
+      const response =
+        await fetch(
+          searchUrl,
+          { cache: "no-store" }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Artwork search failed: " +
+          response.status
+        );
+      }
+
+      const data =
+        await response.json();
+
+      results =
+        Array.isArray(data.results) ?
+          data.results :
+          [];
+
+      if (results.length > 0) {
+        break;
+      }
+
     }
-
-    const data =
-      await response.json();
-
-    const results =
-      Array.isArray(data.results) ?
-        data.results :
-        [];
 
     if (results.length === 0) {
       return "";
@@ -3310,6 +3391,11 @@ async function findOnlineArtwork(metadata) {
     }
 
   } catch (error) {
+
+    lastArtworkLookupError =
+      error && error.message ?
+        error.message :
+        String(error || "Unknown artwork lookup error");
 
     console.warn(
       "ATLAS automatic artwork lookup failed.",
@@ -4755,6 +4841,86 @@ function closeEditor() {
 }
 
 
+function setArtworkStatus(message, state = "") {
+
+  artworkStatus.textContent = message || "";
+  artworkStatus.className = state || "";
+
+}
+
+
+async function searchArtworkForEditor(metadata = null) {
+
+  const lookupMetadata = metadata || {
+    title: titleInput.value.trim(),
+    artist: artistInput.value.trim(),
+    album: albumInput.value.trim()
+  };
+
+  setArtworkStatus(
+    "ATLAS is searching for album artwork...",
+    "searching"
+  );
+
+  findArtworkButton.disabled = true;
+
+  try {
+
+    const foundArtwork =
+      await findOnlineArtwork(
+        lookupMetadata
+      );
+
+    if (foundArtwork) {
+
+      pendingArtwork = foundArtwork;
+      coverPreview.src = foundArtwork;
+
+      setArtworkStatus(
+        "Artwork found automatically ✓",
+        "success"
+      );
+
+      statusText.textContent =
+        "Album artwork found automatically.";
+
+      return true;
+
+    }
+
+    if (lastArtworkLookupError) {
+
+      setArtworkStatus(
+        "ATLAS could not reach the artwork service. Tap Find Artwork Online to retry.",
+        "error"
+      );
+
+      statusText.textContent =
+        "Artwork lookup could not reach the search service.";
+
+    } else {
+
+      setArtworkStatus(
+        "No automatic match found. You can edit the title/artist and tap Find Artwork Online.",
+        "error"
+      );
+
+      statusText.textContent =
+        "No automatic artwork match found.";
+
+    }
+
+    return false;
+
+  } finally {
+
+    findArtworkButton.disabled = false;
+
+  }
+
+}
+
+
 async function openAddEditor(file) {
 
   editorMode = "add";
@@ -4792,45 +4958,31 @@ async function openAddEditor(file) {
   pendingArtwork =
     metadata.artwork || "";
 
-  // Embedded artwork always wins. If the MP3 has no cover,
-  // ATLAS automatically searches for one online.
-  if (!pendingArtwork) {
-
-    statusText.textContent =
-      "ATLAS is finding album artwork...";
-
-    coverPreview.src =
-      fallbackArtwork;
-
-    pendingArtwork =
-      await findOnlineArtwork(
-        metadata
-      );
-
-    if (pendingArtwork) {
-
-      statusText.textContent =
-        "Album artwork found automatically.";
-
-    } else {
-
-      statusText.textContent =
-        "No automatic artwork match found. You can still choose a cover manually.";
-
-    }
-
-  } else {
-
-    statusText.textContent =
-      "Using artwork embedded in the MP3.";
-
-  }
-
   coverPreview.src =
     pendingArtwork ||
     fallbackArtwork;
 
+  // Open the editor immediately so the artwork lookup is visible
+  // instead of happening behind the modal.
   showEditor();
+
+  if (pendingArtwork) {
+
+    setArtworkStatus(
+      "Using artwork embedded in this MP3 ✓",
+      "success"
+    );
+
+    statusText.textContent =
+      "Using artwork embedded in the MP3.";
+
+    return;
+
+  }
+
+  await searchArtworkForEditor(
+    metadata
+  );
 
 }
 
@@ -4865,9 +5017,26 @@ function openEditEditor(song) {
     pendingArtwork ||
     fallbackArtwork;
 
+  setArtworkStatus(
+    pendingArtwork ?
+      "Current artwork loaded." :
+      "No artwork saved. Tap Find Artwork Online to search.",
+    pendingArtwork ? "success" : ""
+  );
+
   showEditor();
 
 }
+
+
+findArtworkButton.addEventListener(
+  "click",
+  async () => {
+
+    await searchArtworkForEditor();
+
+  }
+);
 
 
 coverInput.addEventListener(
@@ -4890,6 +5059,11 @@ coverInput.addEventListener(
 
       coverPreview.src =
         pendingArtwork;
+
+      setArtworkStatus(
+        "Manual artwork selected ✓",
+        "success"
+      );
 
     } catch (error) {
 
