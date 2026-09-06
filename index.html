@@ -1903,7 +1903,7 @@
         accept=".mp3,audio/mpeg"
         multiple
       >
-      <div class="import-note">Your music stays in this device's local ATLAS library. ATLAS uses embedded artwork first, then automatically looks online for a cover when needed.</div>
+      <div class="import-note">Your music stays in this device's local ATLAS library. ATLAS uses embedded artwork first, then searches iTunes, MusicBrainz/Cover Art Archive, and Deezer for a cover when needed.</div>
     </div>
 
   </aside>
@@ -2021,6 +2021,14 @@
           type="button"
         >
           Find Artwork Online
+        </button>
+
+        <button
+          id="searchSoundCloudButton"
+          type="button"
+          style="margin-top:8px;"
+        >
+          Search SoundCloud
         </button>
 
       </div>
@@ -2334,6 +2342,9 @@ const artworkStatus =
 
 const findArtworkButton =
   document.getElementById("findArtworkButton");
+
+const searchSoundCloudButton =
+  document.getElementById("searchSoundCloudButton");
 
 const titleInput =
   document.getElementById("titleInput");
@@ -3244,12 +3255,270 @@ function artworkUrlToDataUrl(url) {
 }
 
 
+function jsonpRequest(baseUrl, callbackParam = "callback", timeoutMs = 9000) {
+
+  return new Promise((resolve, reject) => {
+
+    const callbackName =
+      "atlasJsonp_" +
+      Date.now() +
+      "_" +
+      Math.random().toString(36).slice(2);
+
+    const script =
+      document.createElement("script");
+
+    const separator =
+      baseUrl.includes("?") ? "&" : "?";
+
+    let finished = false;
+
+    const cleanup = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+
+    window[callbackName] = data => {
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("JSONP request failed"));
+    };
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("JSONP request timed out"));
+    }, timeoutMs);
+
+    script.src =
+      baseUrl +
+      separator +
+      encodeURIComponent(callbackParam) +
+      "=" +
+      encodeURIComponent(callbackName);
+
+    document.head.appendChild(script);
+
+  });
+
+}
+
+
+function buildArtworkSearchTerms(metadata) {
+
+  const title =
+    String(metadata.title || "").trim();
+
+  const artist =
+    String(metadata.artist || "").trim();
+
+  const album =
+    String(metadata.album || "").trim();
+
+  const searchTerms = [];
+
+  const add = value => {
+    const cleaned = String(value || "").trim();
+    if (cleaned && !searchTerms.includes(cleaned)) {
+      searchTerms.push(cleaned);
+    }
+  };
+
+  add([artist, title].filter(Boolean).join(" "));
+  add([artist, title, album].filter(Boolean).join(" "));
+  add([title, album].filter(Boolean).join(" "));
+  add(title);
+
+  return searchTerms;
+
+}
+
+
+async function searchITunesArtwork(metadata) {
+
+  const searchTerms =
+    buildArtworkSearchTerms(metadata);
+
+  for (const searchTerm of searchTerms) {
+
+    const searchUrl =
+      "https://itunes.apple.com/search" +
+      "?media=music" +
+      "&entity=song" +
+      "&country=US" +
+      "&limit=30" +
+      "&term=" +
+      encodeURIComponent(searchTerm);
+
+    // JSONP avoids Safari/PWA cross-origin fetch problems.
+    const data =
+      await jsonpRequest(searchUrl, "callback");
+
+    const results =
+      Array.isArray(data && data.results) ?
+        data.results :
+        [];
+
+    if (results.length) {
+      return results
+        .filter(item => item.artworkUrl100 || item.artworkUrl60)
+        .map(item => ({
+          ...item,
+          source: "iTunes",
+          artworkUrl:
+            (item.artworkUrl100 || item.artworkUrl60 || "")
+              .replace(/\d+x\d+bb(?=\.)/i, "600x600bb")
+        }));
+    }
+
+  }
+
+  return [];
+
+}
+
+
+async function searchDeezerArtwork(metadata) {
+
+  const searchTerms =
+    buildArtworkSearchTerms(metadata);
+
+  for (const searchTerm of searchTerms) {
+
+    const searchUrl =
+      "https://api.deezer.com/search" +
+      "?limit=25" +
+      "&output=jsonp" +
+      "&q=" +
+      encodeURIComponent(searchTerm);
+
+    const data =
+      await jsonpRequest(searchUrl, "callback");
+
+    const items =
+      Array.isArray(data && data.data) ?
+        data.data :
+        [];
+
+    if (items.length) {
+      return items
+        .filter(item => item.album && (
+          item.album.cover_xl ||
+          item.album.cover_big ||
+          item.album.cover_medium
+        ))
+        .map(item => ({
+          trackName: item.title || "",
+          artistName:
+            item.artist && item.artist.name ?
+              item.artist.name : "",
+          collectionName:
+            item.album && item.album.title ?
+              item.album.title : "",
+          artworkUrl:
+            item.album.cover_xl ||
+            item.album.cover_big ||
+            item.album.cover_medium ||
+            "",
+          source: "Deezer"
+        }));
+    }
+
+  }
+
+  return [];
+
+}
+
+
+async function searchMusicBrainzArtwork(metadata) {
+
+  const title =
+    String(metadata.title || "").trim();
+
+  const artist =
+    String(metadata.artist || "").trim();
+
+  if (!title && !artist) {
+    return [];
+  }
+
+  const parts = [];
+  if (title) parts.push('recording:"' + title.replace(/"/g, "") + '"');
+  if (artist) parts.push('artist:"' + artist.replace(/"/g, "") + '"');
+
+  const url =
+    "https://musicbrainz.org/ws/2/recording/" +
+    "?fmt=json&limit=20&query=" +
+    encodeURIComponent(parts.join(" AND "));
+
+  const response =
+    await fetch(url, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+
+  if (!response.ok) {
+    throw new Error("MusicBrainz search failed: " + response.status);
+  }
+
+  const data = await response.json();
+  const recordings =
+    Array.isArray(data.recordings) ? data.recordings : [];
+
+  const candidates = [];
+
+  for (const recording of recordings) {
+
+    const artistName =
+      Array.isArray(recording["artist-credit"]) ?
+        recording["artist-credit"]
+          .map(part => part && part.name ? part.name : "")
+          .filter(Boolean)
+          .join(" ") :
+        "";
+
+    const releases =
+      Array.isArray(recording.releases) ?
+        recording.releases.slice(0, 4) :
+        [];
+
+    for (const release of releases) {
+      if (!release || !release.id) continue;
+
+      candidates.push({
+        trackName: recording.title || "",
+        artistName,
+        collectionName: release.title || "",
+        artworkUrl:
+          "https://coverartarchive.org/release/" +
+          release.id +
+          "/front-500",
+        source: "MusicBrainz / Cover Art Archive"
+      });
+    }
+
+  }
+
+  return candidates;
+
+}
+
+
 let lastArtworkLookupError = "";
+let lastArtworkLookupSource = "";
 
 
-async function findOnlineArtwork(metadata) {
+async function findOnlineArtwork(metadata, onProvider = null) {
 
   lastArtworkLookupError = "";
+  lastArtworkLookupSource = "";
 
   const title =
     String(metadata.title || "").trim();
@@ -3264,145 +3533,89 @@ async function findOnlineArtwork(metadata) {
     return "";
   }
 
-  const searchTerms = [];
+  const providers = [
+    { name: "iTunes", run: searchITunesArtwork },
+    { name: "MusicBrainz", run: searchMusicBrainzArtwork },
+    { name: "Deezer", run: searchDeezerArtwork }
+  ];
 
-  const addSearchTerm = value => {
-    const cleaned = String(value || "").trim();
-    if (cleaned && !searchTerms.includes(cleaned)) {
-      searchTerms.push(cleaned);
-    }
-  };
+  let bestResult = null;
+  let bestScore = -1;
+  const errors = [];
 
-  addSearchTerm([artist, title].filter(Boolean).join(" "));
-  addSearchTerm([artist, title, album].filter(Boolean).join(" "));
-  addSearchTerm([title, album].filter(Boolean).join(" "));
-  addSearchTerm(title);
+  for (const provider of providers) {
 
-  try {
-
-    let results = [];
-
-    for (const searchTerm of searchTerms) {
-
-      const searchUrl =
-        "https://itunes.apple.com/search" +
-        "?media=music" +
-        "&entity=song" +
-        "&country=US" +
-        "&limit=30" +
-        "&term=" +
-        encodeURIComponent(searchTerm);
-
-      const response =
-        await fetch(
-          searchUrl,
-          { cache: "no-store" }
-        );
-
-      if (!response.ok) {
-        throw new Error(
-          "Artwork search failed: " +
-          response.status
-        );
-      }
-
-      const data =
-        await response.json();
-
-      results =
-        Array.isArray(data.results) ?
-          data.results :
-          [];
-
-      if (results.length > 0) {
-        break;
-      }
-
-    }
-
-    if (results.length === 0) {
-      return "";
-    }
-
-    let bestResult = null;
-    let bestScore = -1;
-
-    for (const result of results) {
-
-      if (
-        !result.artworkUrl100 &&
-        !result.artworkUrl60
-      ) {
-        continue;
-      }
-
-      const score =
-        artworkMatchScore(
-          result,
-          metadata
-        );
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestResult = result;
-      }
-
-    }
-
-    if (!bestResult) {
-      return "";
-    }
-
-    let artworkUrl =
-      bestResult.artworkUrl100 ||
-      bestResult.artworkUrl60 ||
-      "";
-
-    // Apple artwork URLs usually contain a size token such as
-    // 100x100bb. Ask for a larger square cover when available.
-    artworkUrl =
-      artworkUrl.replace(
-        /\d+x\d+bb(?=\.)/i,
-        "600x600bb"
-      );
-
-    if (!artworkUrl) {
-      return "";
+    if (typeof onProvider === "function") {
+      onProvider(provider.name);
     }
 
     try {
 
-      // Saving a data URL keeps the cover available offline and
-      // includes it in ATLAS library backups.
-      return await artworkUrlToDataUrl(
-        artworkUrl
-      );
+      const results =
+        await provider.run(metadata);
 
-    } catch (downloadError) {
+      for (const result of results) {
+
+        if (!result.artworkUrl) continue;
+
+        const score =
+          artworkMatchScore(result, metadata);
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestResult = result;
+        }
+
+      }
+
+      // Title + artist exact/very strong match. No need to keep querying.
+      if (bestResult && bestScore >= 120) {
+        break;
+      }
+
+    } catch (error) {
+
+      const message =
+        error && error.message ?
+          error.message :
+          String(error || "Unknown provider error");
+
+      errors.push(provider.name + ": " + message);
 
       console.warn(
-        "ATLAS could not cache artwork locally; using the online URL instead.",
-        downloadError
+        "ATLAS artwork provider failed:",
+        provider.name,
+        error
       );
-
-      // Still show the cover if the image host blocks direct caching.
-      return artworkUrl;
 
     }
 
-  } catch (error) {
+  }
 
-    lastArtworkLookupError =
-      error && error.message ?
-        error.message :
-        String(error || "Unknown artwork lookup error");
+  if (!bestResult || bestScore < 30) {
+    if (errors.length === providers.length) {
+      lastArtworkLookupError = errors.join(" | ");
+    }
+    return "";
+  }
 
-    console.warn(
-      "ATLAS automatic artwork lookup failed.",
-      error
+  lastArtworkLookupSource =
+    bestResult.source || "online source";
+
+  try {
+
+    return await artworkUrlToDataUrl(
+      bestResult.artworkUrl
     );
 
-    return "";
+  } catch (downloadError) {
+
+    console.warn(
+      "ATLAS could not cache artwork locally; using the online URL instead.",
+      downloadError
+    );
+
+    return bestResult.artworkUrl;
 
   }
 
@@ -4868,7 +5081,13 @@ async function searchArtworkForEditor(metadata = null) {
 
     const foundArtwork =
       await findOnlineArtwork(
-        lookupMetadata
+        lookupMetadata,
+        providerName => {
+          setArtworkStatus(
+            "ATLAS is searching " + providerName + " for album artwork...",
+            "searching"
+          );
+        }
       );
 
     if (foundArtwork) {
@@ -4876,13 +5095,17 @@ async function searchArtworkForEditor(metadata = null) {
       pendingArtwork = foundArtwork;
       coverPreview.src = foundArtwork;
 
+      const sourceLabel =
+        lastArtworkLookupSource ||
+        "online search";
+
       setArtworkStatus(
-        "Artwork found automatically ✓",
+        "Artwork found automatically via " + sourceLabel + " ✓",
         "success"
       );
 
       statusText.textContent =
-        "Album artwork found automatically.";
+        "Album artwork found via " + sourceLabel + ".";
 
       return true;
 
@@ -4891,7 +5114,7 @@ async function searchArtworkForEditor(metadata = null) {
     if (lastArtworkLookupError) {
 
       setArtworkStatus(
-        "ATLAS could not reach the artwork service. Tap Find Artwork Online to retry.",
+        "ATLAS could not reach any artwork provider. Tap Find Artwork Online to retry.",
         "error"
       );
 
@@ -4901,7 +5124,7 @@ async function searchArtworkForEditor(metadata = null) {
     } else {
 
       setArtworkStatus(
-        "No automatic match found. You can edit the title/artist and tap Find Artwork Online.",
+        "No automatic match found on iTunes, MusicBrainz, or Deezer. Edit the title/artist and tap Find Artwork Online to retry.",
         "error"
       );
 
@@ -5074,6 +5297,44 @@ coverInput.addEventListener(
       );
 
     }
+
+  }
+);
+
+
+searchSoundCloudButton.addEventListener(
+  "click",
+  () => {
+
+    const query =
+      [
+        artistInput.value.trim(),
+        titleInput.value.trim()
+      ]
+      .filter(Boolean)
+      .join(" ");
+
+    if (!query) {
+      setArtworkStatus(
+        "Enter a title or artist before searching SoundCloud.",
+        "error"
+      );
+      return;
+    }
+
+    // SoundCloud's public search API requires developer credentials.
+    // Open its normal search page instead of scraping or embedding a private key.
+    window.open(
+      "https://soundcloud.com/search/sounds?q=" +
+      encodeURIComponent(query),
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    setArtworkStatus(
+      "SoundCloud search opened. Automatic artwork uses iTunes, MusicBrainz, and Deezer.",
+      "searching"
+    );
 
   }
 );
