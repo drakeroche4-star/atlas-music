@@ -3515,6 +3515,44 @@ let lastArtworkLookupError = "";
 let lastArtworkLookupSource = "";
 
 
+async function imageUrlLoads(url, timeoutMs = 8000) {
+
+  return new Promise(resolve => {
+
+    if (!url) {
+      resolve(false);
+      return;
+    }
+
+    const image = new Image();
+    let finished = false;
+
+    const done = value => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      image.onload = null;
+      image.onerror = null;
+      resolve(value);
+    };
+
+    image.onload = () => done(true);
+    image.onerror = () => done(false);
+
+    const timer = setTimeout(
+      () => done(false),
+      timeoutMs
+    );
+
+    // Cache-busting is intentionally not added here because some artwork
+    // CDNs reject modified URLs. Use the provider URL exactly as returned.
+    image.src = url;
+
+  });
+
+}
+
+
 async function findOnlineArtwork(metadata, onProvider = null) {
 
   lastArtworkLookupError = "";
@@ -3539,10 +3577,12 @@ async function findOnlineArtwork(metadata, onProvider = null) {
     { name: "Deezer", run: searchDeezerArtwork }
   ];
 
-  let bestResult = null;
-  let bestScore = -1;
+  const candidates = [];
   const errors = [];
 
+  // Search every provider first. We no longer stop at the first strong match,
+  // because a provider can return a perfect metadata match whose cover URL is
+  // missing or blocked. Keeping the other candidates lets ATLAS fall through.
   for (const provider of providers) {
 
     if (typeof onProvider === "function") {
@@ -3561,16 +3601,14 @@ async function findOnlineArtwork(metadata, onProvider = null) {
         const score =
           artworkMatchScore(result, metadata);
 
-        if (score > bestScore) {
-          bestScore = score;
-          bestResult = result;
+        if (score >= 30) {
+          candidates.push({
+            ...result,
+            atlasScore: score,
+            atlasProvider: provider.name
+          });
         }
 
-      }
-
-      // Title + artist exact/very strong match. No need to keep querying.
-      if (bestResult && bestScore >= 120) {
-        break;
       }
 
     } catch (error) {
@@ -3592,32 +3630,77 @@ async function findOnlineArtwork(metadata, onProvider = null) {
 
   }
 
-  if (!bestResult || bestScore < 30) {
-    if (errors.length === providers.length) {
-      lastArtworkLookupError = errors.join(" | ");
+  candidates.sort(
+    (a, b) => (b.atlasScore || 0) - (a.atlasScore || 0)
+  );
+
+  // Remove duplicate image URLs so we don't test the same cover repeatedly.
+  const uniqueCandidates = [];
+  const seenUrls = new Set();
+
+  for (const candidate of candidates) {
+    if (seenUrls.has(candidate.artworkUrl)) continue;
+    seenUrls.add(candidate.artworkUrl);
+    uniqueCandidates.push(candidate);
+  }
+
+  // Try the best matches one at a time. Prefer a local data URL so the cover
+  // remains available even if the remote CDN later blocks hot-linking.
+  for (const candidate of uniqueCandidates.slice(0, 20)) {
+
+    if (typeof onProvider === "function") {
+      onProvider(
+        (candidate.source || candidate.atlasProvider || "online source") +
+        " — checking cover"
+      );
     }
-    return "";
+
+    try {
+
+      const cachedArtwork =
+        await artworkUrlToDataUrl(candidate.artworkUrl);
+
+      if (cachedArtwork) {
+        lastArtworkLookupSource =
+          candidate.source ||
+          candidate.atlasProvider ||
+          "online source";
+        return cachedArtwork;
+      }
+
+    } catch (downloadError) {
+
+      console.warn(
+        "ATLAS could not cache candidate artwork:",
+        candidate.artworkUrl,
+        downloadError
+      );
+
+      // Some artwork servers allow <img> display but block fetch/CORS.
+      // Verify that the image actually loads before using the remote URL.
+      const canDisplay =
+        await imageUrlLoads(candidate.artworkUrl);
+
+      if (canDisplay) {
+        lastArtworkLookupSource =
+          candidate.source ||
+          candidate.atlasProvider ||
+          "online source";
+        return candidate.artworkUrl;
+      }
+
+    }
+
   }
 
-  lastArtworkLookupSource =
-    bestResult.source || "online source";
-
-  try {
-
-    return await artworkUrlToDataUrl(
-      bestResult.artworkUrl
-    );
-
-  } catch (downloadError) {
-
-    console.warn(
-      "ATLAS could not cache artwork locally; using the online URL instead.",
-      downloadError
-    );
-
-    return bestResult.artworkUrl;
-
+  if (errors.length === providers.length) {
+    lastArtworkLookupError = errors.join(" | ");
+  } else if (uniqueCandidates.length) {
+    lastArtworkLookupError =
+      "ATLAS found matching results, but none of their cover images could be loaded.";
   }
+
+  return "";
 
 }
 
