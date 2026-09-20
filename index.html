@@ -9,6 +9,7 @@
   >
 
   <title>ATLAS Music</title>
+  <meta name="atlas-pwa-revision" content="media-session-clean-v1">
 
   <link rel="manifest" href="manifest.json">
   <link rel="canonical" href="https://drakeroche4-star.github.io/atlas-music/">
@@ -3898,36 +3899,27 @@ function updateMediaSession(song) {
     return;
   }
 
-  const ATLAS_FALLBACK_ARTWORK =
-    "https://drakeroche4-star.github.io/atlas-music/icon-512.png";
-
   const safeSong = song || {};
 
   const artworkSource =
     safeSong.artwork ||
-    ATLAS_FALLBACK_ARTWORK;
-
-  const title =
-    safeSong.title ||
-    safeSong.filename ||
-    "Unknown Song";
-
-  const artist =
-    safeSong.artist ||
-    "Unknown Artist";
-
-  const album =
-    safeSong.album ||
-    "ATLAS Music";
+    "https://drakeroche4-star.github.io/atlas-music/icon-512.png";
 
   try {
-    // Clear any stale metadata first, then publish a fresh ATLAS Music session.
-    navigator.mediaSession.metadata = null;
-
     navigator.mediaSession.metadata = new MediaMetadata({
-      title,
-      artist,
-      album,
+      title:
+        safeSong.title ||
+        safeSong.filename ||
+        "Unknown Song",
+
+      artist:
+        safeSong.artist ||
+        "Unknown Artist",
+
+      album:
+        safeSong.album ||
+        "ATLAS Music",
+
       artwork: [
         {
           src: artworkSource,
@@ -3937,37 +3929,9 @@ function updateMediaSession(song) {
     });
   } catch (error) {
     console.warn(
-      "ATLAS Music media metadata could not be updated.",
+      "ATLAS Music could not update lock-screen metadata.",
       error
     );
-  }
-}
-
-
-function updateMediaPositionState() {
-  if (!("mediaSession" in navigator)) {
-    return;
-  }
-
-  if (
-    !Number.isFinite(audioPlayer.duration) ||
-    audioPlayer.duration <= 0
-  ) {
-    return;
-  }
-
-  try {
-    navigator.mediaSession.setPositionState({
-      duration: audioPlayer.duration,
-      playbackRate: audioPlayer.playbackRate || 1,
-      position: Math.min(
-        audioPlayer.currentTime,
-        audioPlayer.duration
-      )
-    });
-  } catch (error) {
-    // Some Safari/iOS versions expose Media Session
-    // without supporting position state completely.
   }
 }
 
@@ -4305,41 +4269,60 @@ function setupMediaSessionControls() {
     return;
   }
 
-  const handlers = {
-    play: () => audioPlayer.play().catch(console.warn),
-    pause: () => audioPlayer.pause(),
-    previoustrack: () => playPrevious(),
-    nexttrack: () => playNext()
-  };
+  try {
+    navigator.mediaSession.setActionHandler(
+      "play",
+      () => {
+        if (!audioPlayer.src) {
+          return;
+        }
 
-  Object.entries(handlers).forEach(
-    ([action, handler]) => {
-      try {
-        navigator.mediaSession.setActionHandler(
-          action,
-          handler
-        );
-      } catch (error) {
-        console.warn(
-          `Media action ${action} is not supported.`,
-          error
-        );
+        audioPlayer
+          .play()
+          .catch(error => console.warn(error));
       }
-    }
-  );
+    );
+  } catch (error) {
+    console.warn(
+      "ATLAS Music play action is not supported.",
+      error
+    );
+  }
 
-  ["seekbackward", "seekforward"].forEach(
-    action => {
-      try {
-        navigator.mediaSession.setActionHandler(
-          action,
-          null
-        );
-      } catch (error) {
-        // Ignore unsupported actions.
+  try {
+    navigator.mediaSession.setActionHandler(
+      "pause",
+      () => {
+        audioPlayer.pause();
       }
+    );
+  } catch (error) {
+    console.warn(
+      "ATLAS Music pause action is not supported.",
+      error
+    );
+  }
+
+  // Intentionally do not register next/previous/seek handlers here.
+  // iOS can manage the basic Now Playing session without extra custom
+  // navigation actions, which keeps the PWA media session as simple
+  // and isolated as possible.
+  [
+    "previoustrack",
+    "nexttrack",
+    "seekbackward",
+    "seekforward",
+    "seekto"
+  ].forEach(action => {
+    try {
+      navigator.mediaSession.setActionHandler(
+        action,
+        null
+      );
+    } catch (error) {
+      // Ignore actions not supported by this Safari/iOS version.
     }
-  );
+  });
 }
 
 
@@ -4444,17 +4427,6 @@ audioPlayer.addEventListener(
   }
 );
 
-
-audioPlayer.addEventListener(
-  "timeupdate",
-  updateMediaPositionState
-);
-
-
-audioPlayer.addEventListener(
-  "durationchange",
-  updateMediaPositionState
-);
 
 
 function createSongRow(
