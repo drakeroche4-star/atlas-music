@@ -11,6 +11,8 @@
   <title>ATLAS Music</title>
 
   <link rel="manifest" href="manifest.json">
+  <link rel="canonical" href="https://drakeroche4-star.github.io/atlas-music/">
+  <meta name="application-name" content="ATLAS Music">
 
   <meta name="theme-color" content="#0b0d12">
 
@@ -3896,33 +3898,46 @@ function updateMediaSession(song) {
     return;
   }
 
+  const ATLAS_FALLBACK_ARTWORK =
+    "https://drakeroche4-star.github.io/atlas-music/icon-512.png";
+
+  const safeSong = song || {};
+
   const artworkSource =
-    song.artwork ||
-    new URL("./icon-512.png", window.location.href).href;
+    safeSong.artwork ||
+    ATLAS_FALLBACK_ARTWORK;
+
+  const title =
+    safeSong.title ||
+    safeSong.filename ||
+    "Unknown Song";
+
+  const artist =
+    safeSong.artist ||
+    "Unknown Artist";
+
+  const album =
+    safeSong.album ||
+    "ATLAS Music";
 
   try {
-    navigator.mediaSession.metadata =
-      new MediaMetadata({
-        title:
-          song.title ||
-          song.filename ||
-          "Unknown Song",
-        artist:
-          song.artist ||
-          "Unknown Artist",
-        album:
-          song.album ||
-          "ATLAS Music",
-        artwork: [
-          {
-            src: artworkSource,
-            type: getArtworkType(artworkSource)
-          }
-        ]
-      });
+    // Clear any stale metadata first, then publish a fresh ATLAS Music session.
+    navigator.mediaSession.metadata = null;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist,
+      album,
+      artwork: [
+        {
+          src: artworkSource,
+          type: getArtworkType(artworkSource)
+        }
+      ]
+    });
   } catch (error) {
     console.warn(
-      "Media Session metadata could not be updated.",
+      "ATLAS Music media metadata could not be updated.",
       error
     );
   }
@@ -6661,36 +6676,27 @@ async function startApp() {
 startApp();
 
 
-if (
-  "serviceWorker" in navigator
-) {
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register(
+        "/atlas-music/service-worker.js",
+        {
+          scope: "/atlas-music/"
+        }
+      );
 
-  window.addEventListener(
-    "load",
-    () => {
-
-      navigator
-        .serviceWorker
-        .register(
-          "./service-worker.js"
-        )
-        .then(
-          () =>
-            console.log(
-              "ATLAS Music service worker registered."
-            )
-        )
-        .catch(
-          error =>
-            console.error(
-              "Service worker registration failed:",
-              error
-            )
-        );
-
+      console.log(
+        "ATLAS Music service worker registered:",
+        registration.scope
+      );
+    } catch (error) {
+      console.error(
+        "ATLAS Music service worker registration failed:",
+        error
+      );
     }
-  );
-
+  });
 }
 
 </script>
