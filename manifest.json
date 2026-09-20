@@ -1,5 +1,5 @@
 {
-  "id": "./atlas-music-app",
+  "id": "./atlas-music-app-v2",
   "name": "ATLAS Music",
   "short_name": "ATLAS Music",
   "start_url": "./index.html?app=atlasmusic",

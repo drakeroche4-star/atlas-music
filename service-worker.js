@@ -1,4 +1,4 @@
-const CACHE_NAME = "atlas-music-v4";
+const CACHE_NAME = "atlas-music-v10";
 
 const APP_FILES = [
   "./",
